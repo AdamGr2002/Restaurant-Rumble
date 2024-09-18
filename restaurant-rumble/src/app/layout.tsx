@@ -14,7 +14,10 @@ export default function RootLayout({
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
       <Providers>
         <html lang="en">
-          <body className={inter.className}>{children}</body>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+          </head>
+          <body className={`${inter.className} bg-gray-900 text-white`}>{children}</body>
         </html>
       </Providers>
     </ClerkProvider>

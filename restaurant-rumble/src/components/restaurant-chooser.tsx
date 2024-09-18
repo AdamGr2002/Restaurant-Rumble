@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Utensils, Trophy, Loader2, Smartphone, RotateCw, Zap, Target } from 'lucide-react'
 import { useGameContext } from '@/contexts/GameContext'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 
 export default function RestaurantChooser() {
@@ -89,16 +90,24 @@ export default function RestaurantChooser() {
 
   const handleJoinGame = async () => {
     if (user && shortGameId && restaurantName) {
-      const games = await queryGames
-      if (games && games.length > 0) {
-        const gameId = games[0]._id
-        await joinGame({ gameId, playerId: user.id, restaurantName })
-        await setPlayerReady({ gameId, playerId: user.id, isReady: true })
-        setGameId(gameId)
-      } else {
-        console.error("No game found with the provided ID")
+      try {
+        const games = await queryGames
+        if (games && games.length > 0) {
+          const gameId = games[0]._id
+          await joinGame({ gameId, playerId: user.id, restaurantName })
+          await setPlayerReady({ gameId, playerId: user.id, isReady: true })
+          setGameId(gameId)
+        } else {
+          console.error("No game found with the provided ID")
+          // You might want to show an error message to the user here
+        }
+      } catch (error) {
+        console.error("Error joining game:", error)
         // You might want to show an error message to the user here
       }
+    } else {
+      console.error("Missing required information to join game")
+      // You might want to show an error message to the user here
     }
   }
 
@@ -211,7 +220,15 @@ export default function RestaurantChooser() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto bg-black/80 backdrop-blur-sm shadow-xl border-4 border-yellow-400">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center relative">
+          {user && (
+            <div className="absolute top-2 right-2">
+              <Avatar>
+                <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
+                <AvatarFallback>{user.fullName?.[0] || "U"}</AvatarFallback>
+              </Avatar>
+            </div>
+          )}
           <CardTitle className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 pb-2">
             Restaurant Rumble
           </CardTitle>
@@ -249,7 +266,7 @@ export default function RestaurantChooser() {
                   className="text-lg bg-gray-800 text-white border-yellow-400"
                 />
               </div>
-              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-white font-bold" disabled={!shortGameId || !isReady}>
+              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-white font-bold" disabled={!shortGameId || !restaurantName}>
                 Join Existing Game
               </Button>
             </div>
