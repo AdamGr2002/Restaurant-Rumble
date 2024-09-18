@@ -98,3 +98,13 @@ export const getGame = query({
     return await ctx.db.get(args.gameId);
   },
 });
+
+export const queryGames = query({
+  args: { shortId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("games")
+      .filter((q) => q.eq(q.field("shortId"), args.shortId))
+      .collect();
+  },
+});

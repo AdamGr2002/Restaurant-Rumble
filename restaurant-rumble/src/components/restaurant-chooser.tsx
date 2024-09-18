@@ -10,19 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Utensils, Trophy, Loader2, Smartphone, RotateCw, Zap, Target } from 'lucide-react'
 import { useGameContext } from '@/contexts/GameContext'
-import { Id } from "../../convex/_generated/dataModel"
-
 
 
 export default function RestaurantChooser() {
   const { user } = useUser()
   const { gameId, setGameId, restaurantName, setRestaurantName } = useGameContext()
+  const [shortGameId, setShortGameId] = useState<string | null>(null)
   const [currentGame, setCurrentGame] = useState<string | null>(null)
   const [gameScore, setGameScore] = useState<number>(0)
   const [timeLeft, setTimeLeft] = useState<number>(0)
   const [isReady, setIsReady] = useState<boolean>(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [shortGameId, setShortGameId] = useState<string | null>(null)
   const [tapButtons, setTapButtons] = useState<boolean[]>([]);
   const [tappedCount, setTappedCount] = useState(0);
   const [tapGameStarted, setTapGameStarted] = useState(false);
@@ -34,7 +32,7 @@ export default function RestaurantChooser() {
   const updateScore = useMutation(api.games.updateScore)
   const finishGame = useMutation(api.games.finishGame)
   const setPlayerReady = useMutation(api.games.setPlayerReady)
-
+  const queryGames = useQuery(api.games.queryGames, { shortId: "" })
   useEffect(() => {
     if (game?.status === 'playing') {
       window.addEventListener('deviceorientation', handleOrientation)
@@ -90,9 +88,14 @@ export default function RestaurantChooser() {
   }
 
   const handleJoinGame = async () => {
-    if (user && gameId && restaurantName) {
-      await joinGame({ gameId, playerId: user.id, restaurantName })
-      await setPlayerReady({ gameId, playerId: user.id, isReady: true })
+    if (user && shortGameId && restaurantName && queryGames) {
+      const games = await queryGames
+      if (games && games.length > 0) {
+        const gameId = games[0]._id
+        await joinGame({ gameId, playerId: user.id, restaurantName })
+        await setPlayerReady({ gameId, playerId: user.id, isReady: true })
+        setGameId(gameId)
+      }
     }
   }
 
@@ -234,16 +237,16 @@ export default function RestaurantChooser() {
                 Create New Game
               </Button>
               <div className="space-y-2">
-                <Label htmlFor="gameId" className="text-lg font-semibold text-yellow-400">Game ID</Label>
+                <Label htmlFor="shortGameId" className="text-lg font-semibold text-yellow-400">Game ID</Label>
                 <Input
-                  id="gameId"
+                  id="shortGameId"
                   type="text"
                   placeholder="Enter game ID to join"
-                  onChange={(e) => setGameId(e.target.value as Id<"games">)}
+                  onChange={(e) => setShortGameId(e.target.value)}
                   className="text-lg bg-gray-800 text-white border-yellow-400"
                 />
               </div>
-              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-white font-bold" disabled={!gameId || !isReady}>
+              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-white font-bold" disabled={!shortGameId || !isReady}>
                 Join Existing Game
               </Button>
             </div>
