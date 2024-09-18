@@ -9,6 +9,7 @@ export default defineSchema({
         id: v.string(),
         restaurantName: v.string(),
         score: v.number(),
+        isReady: v.boolean(),
       })
     ),
     status: v.union(v.literal("joining"), v.literal("playing"), v.literal("finished")),

@@ -1,67 +1,73 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
-import { Id } from "../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "convex/react"
+import { api } from "../../convex/_generated/api"
+import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Utensils, Trophy, Loader2, Smartphone, RotateCw, Zap, Target } from 'lucide-react'
+import { useGameContext } from '@/contexts/GameContext'
+import { Id } from "../../convex/_generated/dataModel"
 
 export default function RestaurantChooser() {
-  const { user } = useUser();
-  const [gameId, setGameId] = useState<Id<"games"> | null>(null);
-  const [restaurantName, setRestaurantName] = useState<string>('');
-  const [currentGame, setCurrentGame] = useState<string | null>(null);
-  const [gameScore, setGameScore] = useState<number>(0);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { user } = useUser()
+  const { gameId, setGameId, restaurantName, setRestaurantName } = useGameContext()
+  const [currentGame, setCurrentGame] = useState<string | null>(null)
+  const [gameScore, setGameScore] = useState<number>(0)
+  const [timeLeft, setTimeLeft] = useState<number>(0)
+  const [isReady, setIsReady] = useState<boolean>(false)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const game = useQuery(api.games.getGame, gameId ? { gameId } : "skip");
-  const createGame = useMutation(api.games.createGame);
-  const joinGame = useMutation(api.games.joinGame);
-  const startGame = useMutation(api.games.startGame);
-  const updateScore = useMutation(api.games.updateScore);
-  const finishGame = useMutation(api.games.finishGame);
+  const game = useQuery(api.games.getGame, gameId ? { gameId } : "skip")
+  const createGame = useMutation(api.games.createGame)
+  const joinGame = useMutation(api.games.joinGame)
+  const startGame = useMutation(api.games.startGame)
+  const updateScore = useMutation(api.games.updateScore)
+  const finishGame = useMutation(api.games.finishGame)
+  const setPlayerReady = useMutation(api.games.setPlayerReady)
 
   useEffect(() => {
     if (game?.status === 'playing') {
-      window.addEventListener('deviceorientation', handleOrientation);
-      window.addEventListener('devicemotion', handleMotion);
+      window.addEventListener('deviceorientation', handleOrientation)
+      window.addEventListener('devicemotion', handleMotion)
     }
 
     return () => {
-      window.removeEventListener('deviceorientation', handleOrientation);
-      window.removeEventListener('devicemotion', handleMotion);
+      window.removeEventListener('deviceorientation', handleOrientation)
+      window.removeEventListener('devicemotion', handleMotion)
     }
-  }, [game?.status]);
+  }, [game?.status])
 
   useEffect(() => {
     if (currentGame && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
+      return () => clearTimeout(timer)
     } else if (timeLeft === 0 && currentGame) {
-      endCurrentGame();
+      endCurrentGame()
     }
-  }, [currentGame, timeLeft]);
+  }, [currentGame, timeLeft])
+
+  useEffect(() => {
+    setIsReady(restaurantName.length > 0)
+  }, [restaurantName])
 
   const handleOrientation = (event: DeviceOrientationEvent) => {
     if (currentGame === 'tilt' && event.beta && event.beta > 60) {
-      setGameScore(prevScore => prevScore + 1);
+      setGameScore(prevScore => prevScore + 1)
     }
   }
 
   const handleMotion = (event: DeviceMotionEvent) => {
     if (currentGame === 'shake') {
-      const shakeThreshold = 15;
-      const { x, y, z } = event.accelerationIncludingGravity || {};
+      const shakeThreshold = 15
+      const { x, y, z } = event.accelerationIncludingGravity || {}
       if (typeof x === 'number' && typeof y === 'number' && typeof z === 'number') {
-        const movement = Math.abs(x + y + z);
+        const movement = Math.abs(x + y + z)
         if (movement > shakeThreshold) {
-          setGameScore(prevScore => prevScore + 1);
+          setGameScore(prevScore => prevScore + 1)
         }
       }
     }
@@ -69,47 +75,47 @@ export default function RestaurantChooser() {
 
   const handleCreateGame = async () => {
     if (user && restaurantName) {
-      const newGameId = await createGame({ creatorId: user.id });
-      setGameId(newGameId);
-      await joinGame({ gameId: newGameId, playerId: user.id, restaurantName });
-      setRestaurantName('');
+      const newGameId = await createGame({ creatorId: user.id })
+      setGameId(newGameId)
+      await joinGame({ gameId: newGameId, playerId: user.id, restaurantName })
+      await setPlayerReady({ gameId: newGameId, playerId: user.id, isReady: true })
     }
   }
 
   const handleJoinGame = async () => {
     if (user && gameId && restaurantName) {
-      await joinGame({ gameId, playerId: user.id, restaurantName });
-      setRestaurantName('');
+      await joinGame({ gameId, playerId: user.id, restaurantName })
+      await setPlayerReady({ gameId, playerId: user.id, isReady: true })
     }
   }
 
   const handleStartGame = async () => {
     if (gameId) {
-      await startGame({ gameId });
+      await startGame({ gameId })
     }
   }
 
   const handleFinishGame = async () => {
     if (gameId) {
-      await finishGame({ gameId });
+      await finishGame({ gameId })
     }
   }
 
   const startMiniGame = (gameName: string) => {
-    setCurrentGame(gameName);
-    setGameScore(0);
-    setTimeLeft(10); // 10 seconds for each game
+    setCurrentGame(gameName)
+    setGameScore(0)
+    setTimeLeft(10) // 10 seconds for each game
     if (gameName === 'tap') {
-      initTapGame();
+      initTapGame()
     } else if (gameName === 'draw') {
-      initDrawGame();
+      initDrawGame()
     }
   }
 
   const endCurrentGame = async () => {
     if (gameId && user) {
-      await updateScore({ gameId, playerId: user.id, scoreIncrement: gameScore });
-      setCurrentGame(null);
+      await updateScore({ gameId, playerId: user.id, scoreIncrement: gameScore })
+      setCurrentGame(null)
     }
   }
 
@@ -118,36 +124,36 @@ export default function RestaurantChooser() {
   }
 
   const initDrawGame = () => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current
     if (canvas) {
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'black';
-        ctx.font = '20px Arial';
-        ctx.fillText('Draw here!', 10, 30);
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = 'black'
+        ctx.font = '20px Arial'
+        ctx.fillText('Draw here!', 10, 30)
       }
     }
   }
 
   const handleCanvasMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (currentGame === 'draw') {
-      const canvas = canvasRef.current;
+      const canvas = canvasRef.current
       if (canvas) {
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d')
         if (ctx) {
-          ctx.fillStyle = 'blue';
-          ctx.beginPath();
-          ctx.arc(event.nativeEvent.offsetX, event.nativeEvent.offsetY, 2, 0, Math.PI * 2);
-          ctx.fill();
-          setGameScore(prevScore => prevScore + 1);
+          ctx.fillStyle = 'blue'
+          ctx.beginPath()
+          ctx.arc(event.nativeEvent.offsetX, event.nativeEvent.offsetY, 2, 0, Math.PI * 2)
+          ctx.fill()
+          setGameScore(prevScore => prevScore + 1)
         }
       }
     }
   }
 
   if (!user) {
-    return <div>Please sign in to play.</div>;
+    return <div>Please sign in to play.</div>
   }
 
   return (
@@ -163,16 +169,21 @@ export default function RestaurantChooser() {
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="restaurantName" className="text-lg font-semibold">Your Restaurant Name</Label>
-                <Input
-                  id="restaurantName"
-                  type="text"
-                  placeholder="Enter your restaurant name"
-                  value={restaurantName}
-                  onChange={(e) => setRestaurantName(e.target.value)}
-                  className="text-lg"
-                />
+                <div className="flex items-center space-x-2">
+                  <Input
+                    id="restaurantName"
+                    type="text"
+                    placeholder="Enter your restaurant name"
+                    value={restaurantName}
+                    onChange={(e) => setRestaurantName(e.target.value)}
+                    className="text-lg flex-grow"
+                  />
+                  <span className="text-2xl" aria-label={isReady ? "Ready" : "Not Ready"}>
+                    {isReady ? "✅" : "❌"}
+                  </span>
+                </div>
               </div>
-              <Button onClick={handleCreateGame} className="w-full text-lg h-12 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600" disabled={!restaurantName}>
+              <Button onClick={handleCreateGame} className="w-full text-lg h-12 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600" disabled={!isReady}>
                 <Utensils className="mr-2 h-5 w-5" />
                 Create New Game
               </Button>
@@ -186,7 +197,7 @@ export default function RestaurantChooser() {
                   className="text-lg"
                 />
               </div>
-              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600" disabled={!gameId || !restaurantName}>
+              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600" disabled={!gameId || !isReady}>
                 Join Existing Game
               </Button>
             </div>
@@ -197,7 +208,7 @@ export default function RestaurantChooser() {
                 <p className="text-xl font-bold mb-2">Waiting for restaurants to join</p>
                 <p className="text-lg">Game ID: <span className="font-mono bg-gray-200 px-2 py-1 rounded">{gameId}</span></p>
               </div>
-              <Button onClick={handleStartGame} className="w-full text-lg h-12 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600" disabled={game.players.length < 2}>
+              <Button onClick={handleStartGame} className="w-full text-lg h-12 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600" disabled={game.players.length < 2 || !game.players.every(player => player.isReady)}>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Start the Rumble!
               </Button>
@@ -205,7 +216,10 @@ export default function RestaurantChooser() {
                 <h3 className="text-xl font-bold mb-2">Restaurants in the game:</h3>
                 <ul className="space-y-2">
                   {game.players.map(player => (
-                    <li key={player.id} className="bg-gray-100 rounded-lg p-2 text-lg font-semibold">{player.restaurantName}</li>
+                    <li key={player.id} className="bg-gray-100 rounded-lg p-2 text-lg font-semibold flex justify-between items-center">
+                      <span>{player.restaurantName}</span>
+                      <span>{player.isReady ? "✅" : "❌"}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -282,7 +296,8 @@ export default function RestaurantChooser() {
           )}
           {game?.status === 'finished' && (
             <div className="text-center space-y-6">
-              <h3 className="text-3xl font-extrabold mb-4">Game Over!</h3>
+              <h3 className="text-3xl font-extrabol
+d mb-4">Game Over!</h3>
               <div className="bg-yellow-200 p-6 rounded-lg shadow-inner">
                 <Trophy className="mx-auto h-16 w-16 text-yellow-600 mb-4" />
                 <p className="text-2xl font-bold">The winning restaurant is:</p>

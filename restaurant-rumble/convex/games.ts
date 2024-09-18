@@ -20,7 +20,24 @@ export const joinGame = mutation({
       throw new Error("Cannot join this game");
     }
     
-    const updatedPlayers = [...game.players, { id: args.playerId, restaurantName: args.restaurantName, score: 0 }];
+    const updatedPlayers = [...game.players, { id: args.playerId, restaurantName: args.restaurantName, score: 0, isReady: false }];
+    await ctx.db.patch(args.gameId, { players: updatedPlayers });
+  },
+});
+
+export const setPlayerReady = mutation({
+  args: { gameId: v.id("games"), playerId: v.string(), isReady: v.boolean() },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (!game || game.status !== "joining") {
+      throw new Error("Cannot update player status");
+    }
+    
+    const updatedPlayers = game.players.map(player => 
+      player.id === args.playerId 
+        ? { ...player, isReady: args.isReady }
+        : player
+    );
     await ctx.db.patch(args.gameId, { players: updatedPlayers });
   },
 });
@@ -29,7 +46,7 @@ export const startGame = mutation({
   args: { gameId: v.id("games") },
   handler: async (ctx, args) => {
     const game = await ctx.db.get(args.gameId);
-    if (!game || game.status !== "joining" || game.players.length < 2) {
+    if (!game || game.status !== "joining" || game.players.length < 2 || !game.players.every(player => player.isReady)) {
       throw new Error("Cannot start this game");
     }
     
