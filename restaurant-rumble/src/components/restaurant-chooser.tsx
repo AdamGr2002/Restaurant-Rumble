@@ -32,7 +32,7 @@ export default function RestaurantChooser() {
   const updateScore = useMutation(api.games.updateScore)
   const finishGame = useMutation(api.games.finishGame)
   const setPlayerReady = useMutation(api.games.setPlayerReady)
-  const queryGames = useQuery(api.games.queryGames, { shortId: "" })
+  const queryGames = useQuery(api.games.queryGames, shortGameId ? { shortId: shortGameId } : "skip")
   useEffect(() => {
     if (game?.status === 'playing') {
       window.addEventListener('deviceorientation', handleOrientation)
@@ -88,13 +88,16 @@ export default function RestaurantChooser() {
   }
 
   const handleJoinGame = async () => {
-    if (user && shortGameId && restaurantName && queryGames) {
+    if (user && shortGameId && restaurantName) {
       const games = await queryGames
       if (games && games.length > 0) {
         const gameId = games[0]._id
         await joinGame({ gameId, playerId: user.id, restaurantName })
         await setPlayerReady({ gameId, playerId: user.id, isReady: true })
         setGameId(gameId)
+      } else {
+        console.error("No game found with the provided ID")
+        // You might want to show an error message to the user here
       }
     }
   }
