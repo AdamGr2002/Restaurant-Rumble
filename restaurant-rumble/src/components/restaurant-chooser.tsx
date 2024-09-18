@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
-import { useUser } from "@clerk/nextjs"
+import { useUser, SignInButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label"
 import { Utensils, Trophy, Loader2, Smartphone, RotateCw, Zap, Target } from 'lucide-react'
 import { useGameContext } from '@/contexts/GameContext'
 import { Id } from "../../convex/_generated/dataModel"
+
+
 
 export default function RestaurantChooser() {
   const { user } = useUser()
@@ -20,6 +22,10 @@ export default function RestaurantChooser() {
   const [timeLeft, setTimeLeft] = useState<number>(0)
   const [isReady, setIsReady] = useState<boolean>(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [shortGameId, setShortGameId] = useState<string | null>(null)
+  const [tapButtons, setTapButtons] = useState<boolean[]>([]);
+  const [tappedCount, setTappedCount] = useState(0);
+  const [tapGameStarted, setTapGameStarted] = useState(false);
 
   const game = useQuery(api.games.getGame, gameId ? { gameId } : "skip")
   const createGame = useMutation(api.games.createGame)
@@ -75,8 +81,9 @@ export default function RestaurantChooser() {
 
   const handleCreateGame = async () => {
     if (user && restaurantName) {
-      const newGameId = await createGame({ creatorId: user.id })
+      const { id: newGameId, shortId } = await createGame({ creatorId: user.id })
       setGameId(newGameId)
+      setShortGameId(shortId)
       await joinGame({ gameId: newGameId, playerId: user.id, restaurantName })
       await setPlayerReady({ gameId: newGameId, playerId: user.id, isReady: true })
     }
@@ -104,7 +111,7 @@ export default function RestaurantChooser() {
   const startMiniGame = (gameName: string) => {
     setCurrentGame(gameName)
     setGameScore(0)
-    setTimeLeft(10) // 10 seconds for each game
+    setTimeLeft(30) // 30 seconds for each game
     if (gameName === 'tap') {
       initTapGame()
     } else if (gameName === 'draw') {
@@ -120,8 +127,29 @@ export default function RestaurantChooser() {
   }
 
   const initTapGame = () => {
-    // Initialize tap game
-  }
+    const buttonCount = 16; // 4x4 grid
+    setTapButtons(Array(buttonCount).fill(false));
+    setTappedCount(0);
+    setTapGameStarted(false);
+    setTimeout(() => setTapGameStarted(true), 1000); // 1 second delay before start
+  };
+
+  const handleTapButton = (index: number) => {
+    if (!tapGameStarted) return;
+    
+    setTapButtons(prev => {
+      const newButtons = [...prev];
+      newButtons[index] = true;
+      return newButtons;
+    });
+    
+    setTappedCount(prev => prev + 1);
+    setGameScore(prev => prev + 1);
+    
+    if (tappedCount + 1 === tapButtons.length) {
+      endCurrentGame();
+    }
+  };
 
   const initDrawGame = () => {
     const canvas = canvasRef.current
@@ -153,22 +181,40 @@ export default function RestaurantChooser() {
   }
 
   if (!user) {
-    return <div>Please sign in to play.</div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 to-blue-500">
+        <Card className="w-full max-w-md mx-auto bg-white/90 backdrop-blur-sm shadow-xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+              Restaurant Rumble
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg text-center mb-6">Please sign in to play the game.</p>
+            <SignInButton mode="modal">
+              <Button className="w-full text-lg h-12 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600">
+                Sign In
+              </Button>
+            </SignInButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md mx-auto bg-white/90 backdrop-blur-sm shadow-xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md mx-auto bg-black/80 backdrop-blur-sm shadow-xl border-4 border-yellow-400">
         <CardHeader className="text-center">
-          <CardTitle className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+          <CardTitle className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 pb-2">
             Restaurant Rumble
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {!gameId && (
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="restaurantName" className="text-lg font-semibold">Your Restaurant Name</Label>
+                <Label htmlFor="restaurantName" className="text-lg font-semibold text-yellow-400">Your Restaurant Name</Label>
                 <div className="flex items-center space-x-2">
                   <Input
                     id="restaurantName"
@@ -176,28 +222,28 @@ export default function RestaurantChooser() {
                     placeholder="Enter your restaurant name"
                     value={restaurantName}
                     onChange={(e) => setRestaurantName(e.target.value)}
-                    className="text-lg flex-grow"
+                    className="text-lg flex-grow bg-gray-800 text-white border-yellow-400"
                   />
                   <span className="text-2xl" aria-label={isReady ? "Ready" : "Not Ready"}>
-                    {isReady ? "✅" : "❌"}
+                    {isReady ? "🍽️" : "❌"}
                   </span>
                 </div>
               </div>
-              <Button onClick={handleCreateGame} className="w-full text-lg h-12 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600" disabled={!isReady}>
+              <Button onClick={handleCreateGame} className="w-full text-lg h-12 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white font-bold" disabled={!isReady}>
                 <Utensils className="mr-2 h-5 w-5" />
                 Create New Game
               </Button>
               <div className="space-y-2">
-                <Label htmlFor="gameId" className="text-lg font-semibold">Game ID</Label>
+                <Label htmlFor="gameId" className="text-lg font-semibold text-yellow-400">Game ID</Label>
                 <Input
                   id="gameId"
                   type="text"
                   placeholder="Enter game ID to join"
                   onChange={(e) => setGameId(e.target.value as Id<"games">)}
-                  className="text-lg"
+                  className="text-lg bg-gray-800 text-white border-yellow-400"
                 />
               </div>
-              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600" disabled={!gameId || !isReady}>
+              <Button onClick={handleJoinGame} className="w-full text-lg h-12 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-white font-bold" disabled={!gameId || !isReady}>
                 Join Existing Game
               </Button>
             </div>
@@ -206,7 +252,18 @@ export default function RestaurantChooser() {
             <div className="space-y-6">
               <div className="text-center">
                 <p className="text-xl font-bold mb-2">Waiting for restaurants to join</p>
-                <p className="text-lg">Game ID: <span className="font-mono bg-gray-200 px-2 py-1 rounded">{gameId}</span></p>
+                {shortGameId && (
+                  <div className="bg-yellow-400 text-black p-4 rounded-lg mb-4">
+                    <p className="text-lg font-bold">Game ID:</p>
+                    <p className="text-3xl font-mono tracking-wider">{shortGameId}</p>
+                    <Button
+                      onClick={() => navigator.clipboard.writeText(shortGameId)}
+                      className="mt-2 bg-black text-yellow-400 hover:bg-gray-800"
+                    >
+                      Copy ID
+                    </Button>
+                  </div>
+                )}
               </div>
               <Button onClick={handleStartGame} className="w-full text-lg h-12 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600" disabled={game.players.length < 2 || !game.players.every(player => player.isReady)}>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -247,7 +304,7 @@ export default function RestaurantChooser() {
                 </Button>
               </div>
               <div className="mt-4">
-                <h3 className="text-2xl font-bold mb-4 text-center">Leaderboard</h3>
+                <h3 className="text-xl font-bold mb-4 text-center">Leaderboard</h3>
                 <ul className="space-y-3">
                   {game.players.sort((a, b) => b.score - a.score).map((player, index) => (
                     <li key={player.id} className={`flex justify-between items-center p-3 rounded-lg ${index === 0 ? 'bg-yellow-200' : 'bg-gray-100'}`}>
@@ -274,9 +331,28 @@ export default function RestaurantChooser() {
                 <p className="text-xl">seconds left</p>
               </div>
               {currentGame === 'tap' && (
-                <Button onClick={() => setGameScore(prevScore => prevScore + 1)} className="w-full h-32 text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600">
-                  TAP ME!
-                </Button>
+                <div className="space-y-4">
+                  {!tapGameStarted && <p className="text-2xl font-bold text-center">Get ready...</p>}
+                  <div className="grid grid-cols-4 gap-2">
+                    {tapButtons.map((tapped, index) => (
+                      <Button
+                        key={index}
+                        onClick={() => handleTapButton(index)}
+                        disabled={tapped}
+                        className={`w-full h-16 ${
+                          tapped 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600'
+                        }`}
+                      >
+                        {tapped ? '✓' : ''}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xl text-center">
+                    Tapped: {tappedCount} / {tapButtons.length}
+                  </p>
+                </div>
               )}
               {currentGame === 'draw' && (
                 <canvas
@@ -296,8 +372,7 @@ export default function RestaurantChooser() {
           )}
           {game?.status === 'finished' && (
             <div className="text-center space-y-6">
-              <h3 className="text-3xl font-extrabol
-d mb-4">Game Over!</h3>
+              <h3 className="text-3xl font-extrabold mb-4">Game Over!</h3>
               <div className="bg-yellow-200 p-6 rounded-lg shadow-inner">
                 <Trophy className="mx-auto h-16 w-16 text-yellow-600 mb-4" />
                 <p className="text-2xl font-bold">The winning restaurant is:</p>

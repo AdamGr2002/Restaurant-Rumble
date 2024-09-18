@@ -1,11 +1,9 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
-import { ConvexProvider, ConvexReactClient } from "convex/react"
+import { Providers } from '@/components/Providers'
 
 const inter = Inter({ subsets: ['latin'] })
-
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export default function RootLayout({
   children,
@@ -14,11 +12,11 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
-      <ConvexProvider client={convex}>
+      <Providers>
         <html lang="en">
           <body className={inter.className}>{children}</body>
         </html>
-      </ConvexProvider>
+      </Providers>
     </ClerkProvider>
   )
 }

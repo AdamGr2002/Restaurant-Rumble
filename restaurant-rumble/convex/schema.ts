@@ -12,6 +12,7 @@ export default defineSchema({
         isReady: v.boolean(),
       })
     ),
+    shortId: v.optional(v.string()),
     status: v.union(v.literal("joining"), v.literal("playing"), v.literal("finished")),
     winner: v.optional(v.string()),
   }),

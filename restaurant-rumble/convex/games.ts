@@ -1,14 +1,22 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+function generateShortId() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
 export const createGame = mutation({
   args: { creatorId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("games", {
+    const shortId = generateShortId();
+    const gameId = await ctx.db.insert("games", {
       creatorId: args.creatorId,
-      players: [],
       status: "joining",
+      players: [],
+      shortId: shortId,
+      // ... other game properties
     });
+    return { id: gameId, shortId: shortId };
   },
 });
 
