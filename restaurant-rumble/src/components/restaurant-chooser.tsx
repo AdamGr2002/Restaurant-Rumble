@@ -359,11 +359,11 @@ export default function RestaurantChooser() {
             <div className="space-y-6">
               <h3 className="text-2xl font-bold text-center">{currentGame.charAt(0).toUpperCase() + currentGame.slice(1)} Game</h3>
               <div className="text-center">
-                <p className="text-4xl font-bold">{gameScore}</p>
+                <p className="text-4xl font-bold text-yellow-300">{gameScore}</p>
                 <p className="text-xl">points</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">{timeLeft}</p>
+                <p className="text-2xl font-bold text-yellow-300">{timeLeft}</p>
                 <p className="text-xl">seconds left</p>
               </div>
               {currentGame === 'tap' && (
