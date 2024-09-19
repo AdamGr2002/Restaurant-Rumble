@@ -51,14 +51,20 @@ export const setPlayerReady = mutation({
 });
 
 export const startGame = mutation({
-  args: { gameId: v.id("games") },
+  args: { gameId: v.id('games') },
   handler: async (ctx, args) => {
-    const game = await ctx.db.get(args.gameId);
-    if (!game || game.status !== "joining" || game.players.length < 2 || !game.players.every(player => player.isReady)) {
-      throw new Error("Cannot start this game");
-    }
+    const { gameId } = args;
     
-    await ctx.db.patch(args.gameId, { status: "playing" });
+    // Verify the game exists and is in 'joining' status
+    const game = await ctx.db.get(gameId);
+    if (!game || game.status !== 'joining') {
+      throw new Error('Invalid game or game already started');
+    }
+
+    // Update the game status to 'playing'
+    await ctx.db.patch(gameId, { status: 'playing' });
+
+    return { success: true };
   },
 });
 

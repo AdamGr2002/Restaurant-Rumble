@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Utensils, Trophy, Loader2, Smartphone, RotateCw, Zap, Target } from 'lucide-react'
 import { useGameContext } from '@/contexts/GameContext'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useRouter } from 'next/router'
 
 
 export default function RestaurantChooser() {
@@ -25,6 +27,7 @@ export default function RestaurantChooser() {
   const [tapButtons, setTapButtons] = useState<boolean[]>([]);
   const [tappedCount, setTappedCount] = useState(0);
   const [tapGameStarted, setTapGameStarted] = useState(false);
+  const router = useRouter()
 
   const game = useQuery(api.games.getGame, gameId ? { gameId } : "skip")
   const createGame = useMutation(api.games.createGame)
@@ -41,7 +44,20 @@ export default function RestaurantChooser() {
     if (game?.status === 'playing' && currentGame) {
       if (currentGame === 'tilt') {
         orientationHandler = handleOrientation;
-        window.addEventListener('deviceorientation', orientationHandler);
+        if ('requestPermission' in DeviceOrientationEvent) {
+          (DeviceOrientationEvent as any).requestPermission()
+            .then((permissionState: string) => {
+              if (permissionState === 'granted' && orientationHandler) {
+                window.addEventListener('deviceorientation', orientationHandler);
+              } else {
+                console.error('Permission to access device orientation was denied');
+                // Optionally, show a message to the user
+              }
+            })
+            .catch(console.error);
+        } else {
+          window.addEventListener('deviceorientation', orientationHandler);
+        }
       } else if (currentGame === 'shake') {
         motionHandler = handleMotion;
         window.addEventListener('devicemotion', motionHandler);
@@ -127,6 +143,8 @@ export default function RestaurantChooser() {
   const handleStartGame = async () => {
     if (gameId) {
       await startGame({ gameId })
+      // Refresh the page for all users
+      router.reload()
     }
   }
 
@@ -301,7 +319,11 @@ export default function RestaurantChooser() {
                   </div>
                 )}
               </div>
-              <Button onClick={handleStartGame} className="w-full text-lg h-12 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600" disabled={game.players.length < 2 || !game.players.every(player => player.isReady)}>
+              <Button 
+                onClick={handleStartGame} 
+                className="w-full text-lg h-12 bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600" 
+                disabled={game.players.length < 2 || !game.players.every(player => player.isReady) || user.id !== game.creatorId}
+              >
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Start the Rumble!
               </Button>
@@ -357,14 +379,14 @@ export default function RestaurantChooser() {
           )}
           {currentGame && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-bold text-center">{currentGame.charAt(0).toUpperCase() + currentGame.slice(1)} Game</h3>
+              <h3 className="text-2xl font-bold text-center text-yellow-300">{currentGame.charAt(0).toUpperCase() + currentGame.slice(1)} Game</h3>
               <div className="text-center">
                 <p className="text-4xl font-bold text-yellow-300">{gameScore}</p>
-                <p className="text-xl">points</p>
+                <p className="text-xl text-yellow-300">points</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-yellow-300">{timeLeft}</p>
-                <p className="text-xl">seconds left</p>
+                <p className="text-xl text-yellow-300">seconds left</p>
               </div>
               {currentGame === 'tap' && (
                 <div className="space-y-4">
