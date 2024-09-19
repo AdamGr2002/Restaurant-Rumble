@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Utensils, Trophy, Loader2, Smartphone, RotateCw, Zap, Target } from 'lucide-react'
 import { useGameContext } from '@/contexts/GameContext'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useRouter } from 'next/router'
+
 
 
 export default function RestaurantChooser() {
@@ -28,7 +28,6 @@ export default function RestaurantChooser() {
   const [tapButtons, setTapButtons] = useState<boolean[]>([]);
   const [tappedCount, setTappedCount] = useState(0);
   const [tapGameStarted, setTapGameStarted] = useState(false);
-  const router = useRouter()
 
   const game = useQuery(api.games.getGame, gameId ? { gameId } : "skip")
   const createGame = useMutation(api.games.createGame)
