@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
@@ -143,8 +144,7 @@ export default function RestaurantChooser() {
   const handleStartGame = async () => {
     if (gameId) {
       await startGame({ gameId })
-      // Refresh the page for all users
-      router.reload()
+      window.location.reload() // Use this instead of router.reload()
     }
   }
 
@@ -446,3 +446,4 @@ export default function RestaurantChooser() {
     </div>
   )
 }
+
