@@ -35,16 +35,28 @@ export default function RestaurantChooser() {
   const setPlayerReady = useMutation(api.games.setPlayerReady)
   const queryGames = useQuery(api.games.queryGames, shortGameId ? { shortId: shortGameId } : "skip")
   useEffect(() => {
-    if (game?.status === 'playing') {
-      window.addEventListener('deviceorientation', handleOrientation)
-      window.addEventListener('devicemotion', handleMotion)
+    let orientationHandler: ((event: DeviceOrientationEvent) => void) | null = null;
+    let motionHandler: ((event: DeviceMotionEvent) => void) | null = null;
+
+    if (game?.status === 'playing' && currentGame) {
+      if (currentGame === 'tilt') {
+        orientationHandler = handleOrientation;
+        window.addEventListener('deviceorientation', orientationHandler);
+      } else if (currentGame === 'shake') {
+        motionHandler = handleMotion;
+        window.addEventListener('devicemotion', motionHandler);
+      }
     }
 
     return () => {
-      window.removeEventListener('deviceorientation', handleOrientation)
-      window.removeEventListener('devicemotion', handleMotion)
-    }
-  }, [game?.status])
+      if (orientationHandler) {
+        window.removeEventListener('deviceorientation', orientationHandler);
+      }
+      if (motionHandler) {
+        window.removeEventListener('devicemotion', motionHandler);
+      }
+    };
+  }, [game?.status, currentGame]);
 
   useEffect(() => {
     if (currentGame && timeLeft > 0) {
@@ -60,20 +72,21 @@ export default function RestaurantChooser() {
   }, [restaurantName])
 
   const handleOrientation = (event: DeviceOrientationEvent) => {
-    if (currentGame === 'tilt' && event.beta && event.beta > 60) {
-      setGameScore(prevScore => prevScore + 1)
+    if (currentGame === 'tilt' && event.beta !== null) {
+      const tiltThreshold = 20;
+      if (Math.abs(event.beta) > tiltThreshold) {
+        setGameScore(prevScore => prevScore + 1);
+      }
     }
   }
 
   const handleMotion = (event: DeviceMotionEvent) => {
     if (currentGame === 'shake') {
-      const shakeThreshold = 15
-      const { x, y, z } = event.accelerationIncludingGravity || {}
-      if (typeof x === 'number' && typeof y === 'number' && typeof z === 'number') {
-        const movement = Math.abs(x + y + z)
-        if (movement > shakeThreshold) {
-          setGameScore(prevScore => prevScore + 1)
-        }
+      const shakeThreshold = 15;
+      const { x, y, z } = event.accelerationIncludingGravity ?? {};
+      const acceleration = Math.sqrt((x ?? 0) ** 2 + (y ?? 0) ** 2 + (z ?? 0) ** 2);
+      if (acceleration > shakeThreshold) {
+        setGameScore(prevScore => prevScore + 1);
       }
     }
   }
